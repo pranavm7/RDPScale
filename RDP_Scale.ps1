@@ -25,11 +25,19 @@ function Install-Chocolatey {
 	        Write-Host "Chocolatey installed successfully."
 	    }
 	}
+	else{ Write-Host "Chocolatey is installed! Proceeding to install TailScale..." }
 }
 
-Write-Host "Chocolatey already installed! Proceeding to install TailScale..."
-choco install tailscale -y
+function Install-Tailscale {
+	# Checks if tailscale is installed, if not, then installs tailscale using chocolatey.
+	if (-not(Test-Path -Path "$env:ProgramData\chocolatey\lib\tailscale")) {
+		choco install tailscale -y
+	}
+	else {
+	    Write-Host "Tailscale is installed!"
+	}
+}
 
-# Check if Tailscale is now installed
-$tailscaleVersion = (Get-Command "tailscale").FileVersionInfo.ProductVersion
-Write-Host "Tailscale is installed. Version: $tailscaleVersion"
+Install-Chocolatey
+Install-Tailscale
+
