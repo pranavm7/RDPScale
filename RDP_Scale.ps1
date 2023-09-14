@@ -1,8 +1,5 @@
 #Requires -RunAsAdministrator
 
-# Change powershell terminal color from blue-yellow
-$Host.UI.RawUI.BackgroundColor = 'black'
-$Host.UI.RawUI.ForegroundColor = 'white'
 
 $script:executionPolicy = Get-ExecutionPolicy
 $script:tailscaleIP_Range= "100.64.0.0/10"
