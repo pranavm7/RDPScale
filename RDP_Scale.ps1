@@ -58,7 +58,7 @@ function Install-Tailscale {
 	else {
 	    Write-Host "`n[+]`tTailscale is installed!"
 	    Write-Host "`n[+]`tRefreshing powershell..."
-	    powershell -c Set-ExecutionPolicy bypass -Scope Process;cd $(Get-Location);.\RDP_Scale.ps1
+#	    powershell -c Set-ExecutionPolicy bypass -Scope Process;cd $(Get-Location);.\RDP_Scale.ps1
 	}
 }
 
