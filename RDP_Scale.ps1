@@ -60,6 +60,8 @@ function Install-Tailscale {
 	}
 	else {
 	    Write-Host "`n[+]`tTailscale is installed!"
+	    Write-Host "`n[+]`tRefreshing powershell..."
+	    powershell -c Set-ExecutionPolicy bypass -Scope Process;cd $(Get-Location);.\RDP_Scale.ps1
 	}
 }
 
@@ -81,6 +83,8 @@ function Check-TailscaleCli {
 Install-Chocolatey
 Install-Tailscale
 Check-TailscaleCli
+
+$temp= Read-Host "`nTailscale installed! Please log in and set up tailscale.`nPress Enter to continue when login is completed on client and this computer."
 
 # Starts Tailscale
 if($(tailscale status) -like "*stop*") {
@@ -106,3 +110,6 @@ Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" -Enabled True -RemoteA
 Restart-Service TermService -ErrorAction SilentlyContinue
 
 Write-Host "`n[+]`tConfiguration Completed! You can now login as $env:USERDOMAIN\$env:USERNAME"
+Write-Host "`n`nIn case of any difficulties, please consult the README.md file at github.com/pranav-m7/RDPScale"
+
+exit 0
