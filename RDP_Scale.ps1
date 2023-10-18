@@ -77,13 +77,25 @@ function Check-TailscaleCli {
 	}
 }
 
+# Get IP of client
+function Get-ClientIP($remoteClientName) {
+	$script:deviceInfo = $(tailscale status | Select-String $remoteClientName)
+	while ($deviceInfo -eq "") {
+		Write-Host "`n[!]`tClient device not found. Please check if the client device is connected to the same tailscale network.`n"
+		$script:remoteClientName = Read-Host "Please enter the name of the client device"
+		Get-ClientIP($remoteClientName)
+	}
+	$script:deviceInfo = $(tailscale status | Select-String $remoteClientName) -split ' '
+	$script:clientIP = $deviceInfo[0]
+}
+
 Install-Chocolatey
 Install-Tailscale
 Check-TailscaleCli
 
 # starts a local webpage to auth into tailscale
 Write-Host "`nTailscale installed! Please log in and set up tailscale.`nPress Enter to continue when login is completed on client and this computer"
-$script:ts_web=Start-Process tailscale web -NoNewWindow -PassThru
+$script:ts_web = Start-Process tailscale web -NoNewWindow -PassThru
 Start-Sleep -Seconds 3
 Start-Process "http://localhost:8088"
 
@@ -100,16 +112,16 @@ if ($(tailscale status) -like "*stop*") {
 	tailscale up
 }
 
+# Stops the started local webpage
 Stop-Process -Id $ts_web.Id
 
 # Prompt the user for client device alias
 Write-Host "`n[Action Required]"
-$remoteClientName = Read-Host "`nPlease enter the name of the client device"
-$deviceInfo = $(tailscale status | Select-String $remoteClientName) -split ' '
-$deviceIP = $deviceInfo[0]
+$script:remoteClientName = Read-Host "`nPlease enter the name of the client device"
+Get-ClientIP($remoteClientName)
 
 # Enable RDP
-# ⚠️ Caution this is editing a registry value
+# Caution this is editing a registry value
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 
 # Edit firewall to accept connections only from the client device IP
