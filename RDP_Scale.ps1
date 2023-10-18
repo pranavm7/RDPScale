@@ -35,7 +35,7 @@ function Install-Chocolatey {
 			Write-Host "`n[+]`tChocolatey installed successfully.`n"
 		}
 	}
-	else { Write-Host "`n[.]`tChocolatey is installed! Proceeding to install TailScale...`n" }
+	else { Write-Host "`n[+]`tChocolatey is installed! Proceeding to install TailScale...`n" }
 }
 
 # Install and check Tailscale installation
@@ -59,7 +59,11 @@ function Install-Tailscale {
 		Write-Host "`n[+]`tTailscale is installed!"
 		Write-Host "`n[+]`tRefreshing powershell..."
 	}
-	Update-SessionEnvironment
+	$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+	if (Test-Path($ChocolateyProfile)) {
+		Import-Module "$ChocolateyProfile"
+	}
+	refreshenv
 }
 
 # Check if the tailscale command exists
@@ -78,26 +82,24 @@ function Check-TailscaleCli {
 }
 
 # Get IP of client
-function Get-ClientIP($remoteClientName) {
-	$script:deviceInfo = $(tailscale status | Select-String $remoteClientName)
-	while ($deviceInfo -eq "") {
-		Write-Host "`n[!]`tClient device not found. Please check if the client device is connected to the same tailscale network.`n"
+function Get-ClientIP {
+	$script:remoteClientName = Read-Host
+	$script:deviceInfo = tailscale status | Select-String $remoteClientName
+	while ($deviceInfo.length -eq 0 ) {
+		Write-Host "`n[!]`tClient device not found. Please check if the client device is connected or name is correctly spelled.`n"
 		$script:remoteClientName = Read-Host "Please enter the name of the client device"
-		Get-ClientIP($remoteClientName)
+		$script:deviceInfo = tailscale status | Select-String $remoteClientName
 	}
 	$script:deviceInfo = $(tailscale status | Select-String $remoteClientName) -split ' '
 	$script:clientIP = $deviceInfo[0]
+	Write-Host "`n[+]`tAdding $deviceInfo!`n"
 }
 
 Install-Chocolatey
 Install-Tailscale
 Check-TailscaleCli
 
-# starts a local webpage to auth into tailscale
-Write-Host "`nTailscale installed! Please log in and set up tailscale.`nPress Enter to continue when login is completed on client and this computer"
-$script:ts_web = Start-Process tailscale web -NoNewWindow -PassThru
-Start-Sleep -Seconds 3
-Start-Process "http://localhost:8088"
+Write-Host "`nTailscale installed! Please start the Tailscale App.`nPress Enter to continue when login is completed on client and this computer"
 
 
 $script:temp = Read-Host
@@ -106,25 +108,24 @@ while ($temp -ne "") {
 	$inp = Read-Host
 }
 
-# Starts Tailscale
-if ($(tailscale status) -like "*stop*") {
-	Write-Host "`n[+]`tRunning TailScale..."
+# Connect tailscale in case not connected
+if ( -not ($(tailscale status) -like "*NoState*")) {
 	tailscale up
 }
-
-# Stops the started local webpage
-Stop-Process -Id $ts_web.Id
-
 # Prompt the user for client device alias
-Write-Host "`n[Action Required]"
-$script:remoteClientName = Read-Host "`nPlease enter the name of the client device"
+Write-Host "`n[Action Required]`n"
+tailscale status
+Write-Host "`nPlease enter the name of the client device"
+
 Get-ClientIP($remoteClientName)
 
 # Enable RDP
 # Caution this is editing a registry value
+Write-Host "`n[+]`tEnabling RDP...`n"
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 
 # Edit firewall to accept connections only from the client device IP
+Write-Host "`n[+]`tConfiguring firewall...`n"
 Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" -Enabled True -RemoteAddress $clientIP
 Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" -Enabled True -RemoteAddress $clientIP
 
@@ -133,6 +134,7 @@ $script:rdp_TCP = Get-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" | Ge
 $script:rdp_UDP = Get-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" | Get-NetFirewallSecurityFilter
 
 # Additional security settings
+Write-Host "`n[+]`tSetting additional security settings...`n"
 Set-NetFirewallSecurityFilter -Authentication Required -Encryption Required -InputObject $rdp_TCP
 Set-NetFirewallSecurityFilter -Authentication Required -Encryption Required -InputObject $rdp_UDP
 
