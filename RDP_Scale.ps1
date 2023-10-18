@@ -103,7 +103,7 @@ Start-Process "http://localhost:8088"
 $script:temp = Read-Host
 while ($temp -ne "") {
 	Write-Host "Invalid input. Please press Enter to continue..."
-	$input = Read-Host
+	$inp = Read-Host
 }
 
 # Starts Tailscale
@@ -125,8 +125,8 @@ Get-ClientIP($remoteClientName)
 Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 
 # Edit firewall to accept connections only from the client device IP
-Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" -Enabled True -RemoteAddress $deviceIP
-Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" -Enabled True -RemoteAddress $deviceIP
+Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" -Enabled True -RemoteAddress $clientIP
+Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" -Enabled True -RemoteAddress $clientIP
 
 # Getting the rules for additional security settings
 $script:rdp_TCP = Get-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" | Get-NetFirewallSecurityFilter
