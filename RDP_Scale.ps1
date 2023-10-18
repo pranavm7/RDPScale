@@ -2,7 +2,7 @@
 
 
 $script:executionPolicy = Get-ExecutionPolicy
-$script:tailscaleIP_Range= "100.64.0.0/10"
+$script:tailscaleIP_Range = "100.64.0.0/10"
 
 # Checks for successful install of tailscale
 $script:tailscaleInstall = $False
@@ -19,58 +19,58 @@ if ($executionPolicy -eq "Restricted") {
 # Check and install chocolatey package manager
 function Install-Chocolatey {
 	# Check if Chocolatey is installed
-	if (-not (Test-Path "$env:ProgramData\chocolatey\bin\choco.exe")) {
+	if (-not (Test-Path "$env:ProgramData\chocolatey")) {
 	    
-	    # Chocolatey is not installed, so we go ahead and install it.
-	    # One liner from https://chocolatey.org/install#individual 
-	    Write-Host "Chocolatey is not installed.`n`nInstalling Chocolatey..."
-	    Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+		# Chocolatey is not installed, so we go ahead and install it.
+		# One liner from https://chocolatey.org/install#individual 
+		Write-Host "Chocolatey is not installed.`n`nInstalling Chocolatey..."
+		Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 	
-	    # Check if Chocolatey installation was successful
-	    if (-not (Test-Path "$env:ProgramData\chocolatey\bin\choco.exe")) {
-	        Write-Host "`n[!]`tChocolatey installation failed. Exiting."
-	        exit 1
-	    }
-	    else {
-	        Write-Host "`n[+]`tChocolatey installed successfully.`n"
-	    }
+		# Check if Chocolatey installation was successful
+		if (-not (Test-Path "$env:ProgramData\chocolatey\bin\choco.exe")) {
+			Write-Host "`n[!]`tChocolatey installation failed. Exiting."
+			exit 1
+		}
+		else {
+			Write-Host "`n[+]`tChocolatey installed successfully.`n"
+		}
 	}
-	else{ Write-Host "`n[.]`tChocolatey is installed! Proceeding to install TailScale...`n" }
+	else { Write-Host "`n[.]`tChocolatey is installed! Proceeding to install TailScale...`n" }
 }
 
 # Install and check Tailscale installation
 function Install-Tailscale {
 	# Checks if tailscale is installed, if not, then installs tailscale using chocolatey.
-	if (-not(Test-Path -Path "$env:ProgramData\chocolatey\lib\tailscale")) {
+	$script:tailscaleInstallCheck = $(Get-Package -Name tailscale -ErrorAction SilentlyContinue)
+	if ($tailscaleInstallCheck.Name -ne "Tailscale") {
 		choco install tailscale -y
 		# Check for successful install
-		if (-not(Test-Path -Path "$env:ProgramData\chocolatey\lib\tailscale")) {
+		if ($LASTEXITCODE -eq 0) {
 			Write-Host "`n[+]`tTailscale successfully installed!`n"
-			$tailscaleInstall=$True
-			}
+		}
 		else { 
 			Write-Host "`n`n[!]`tTailscale install failed.`nPlease try again using the following command:`n`t choco install tailscale -y`nAlternatively, install tailscale from https://tailscale.com/download/"
 			Write-Host "Exiting...`n"	
-				exit 1
+			exit 1
 
-		     }
+		}
 	}
 	else {
-	    Write-Host "`n[+]`tTailscale is installed!"
-	    Write-Host "`n[+]`tRefreshing powershell..."
-#	    powershell -c Set-ExecutionPolicy bypass -Scope Process;cd $(Get-Location);.\RDP_Scale.ps1
+		Write-Host "`n[+]`tTailscale is installed!"
+		Write-Host "`n[+]`tRefreshing powershell..."
 	}
+	Update-SessionEnvironment
 }
 
 # Check if the tailscale command exists
 
 function Check-TailscaleCli {
-	if (-not(Test-Path -Path (Get-Command tailscale -ErrorAction SilentlyContinue))){
-		$tailscaleAvailable=$True
+	if (-not(Test-Path -Path (Get-Command tailscale -ErrorAction SilentlyContinue))) {
+		$tailscaleAvailable = $True
 	}
 	else {
-		if($tailscaleInstall){
-			Write-Host "`n`n[!]`tThe tailscale command is not available but the application is installed.`n Please open the application and finish the setup, and run this script again!`n`nIf this error shows repeatedly, then a reboot is recommended.`n"
+		if ($tailscaleInstall) {
+			Write-Host "`n`n[!]`tThe tailscale command is not available but the application is installed.`n Please open the application, finish the setup, and run this script again!`n`nIf this error shows repeatedly, then a reboot is recommended.`n"
 			# exiting as 0 since it is not a script error, but pending configuration changes.
 			exit 0
 		}
@@ -81,13 +81,26 @@ Install-Chocolatey
 Install-Tailscale
 Check-TailscaleCli
 
-$temp= Read-Host "`nTailscale installed! Please log in and set up tailscale.`nPress Enter to continue when login is completed on client and this computer."
+# starts a local webpage to auth into tailscale
+Write-Host "`nTailscale installed! Please log in and set up tailscale.`nPress Enter to continue when login is completed on client and this computer"
+$script:ts_web=Start-Process tailscale web -NoNewWindow -PassThru
+Start-Sleep -Seconds 3
+Start-Process "http://localhost:8088"
+
+
+$script:temp = Read-Host
+while ($temp -ne "") {
+	Write-Host "Invalid input. Please press Enter to continue..."
+	$input = Read-Host
+}
 
 # Starts Tailscale
-if($(tailscale status) -like "*stop*") {
+if ($(tailscale status) -like "*stop*") {
 	Write-Host "`n[+]`tRunning TailScale..."
 	tailscale up
 }
+
+Stop-Process -Id $ts_web.Id
 
 # Prompt the user for client device alias
 Write-Host "`n[Action Required]"
@@ -102,6 +115,14 @@ Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' 
 # Edit firewall to accept connections only from the client device IP
 Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" -Enabled True -RemoteAddress $deviceIP
 Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" -Enabled True -RemoteAddress $deviceIP
+
+# Getting the rules for additional security settings
+$script:rdp_TCP = Get-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" | Get-NetFirewallSecurityFilter
+$script:rdp_UDP = Get-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" | Get-NetFirewallSecurityFilter
+
+# Additional security settings
+Set-NetFirewallSecurityFilter -Authentication Required -Encryption Required -InputObject $rdp_TCP
+Set-NetFirewallSecurityFilter -Authentication Required -Encryption Required -InputObject $rdp_UDP
 
 # Restart RDP service to set changes
 Restart-Service TermService -ErrorAction SilentlyContinue
