@@ -14,12 +14,6 @@ $script:tailscaleInstall = $False
 # Checks if tailscale CLI is available
 $script:tailscaleAvailable = $False
 
-# "<Main>" process
-Install-Chocolatey
-Install-Tailscale
-Get-TailscaleCli
-Set-AllowLogin
-Set-RDP_Rules
 
 # Check and install chocolatey package manager
 function Install-Chocolatey {
@@ -106,17 +100,17 @@ function Set-RDP_Rules {
 		# Prompt the user for client device alias
 		Write-Host "`n[Action Required]`n"
 		tailscale status
-		Write-Host "`nPlease enter the name of the client device"
+		Write-Host "`nPlease enter the name of the client device" -ForegroundColor Yellow
 
 		Get-ClientIP($remoteClientName)
 
 		# Enable RDP
 		# Caution!! this is editing a registry value
-		Write-Host "`n[+]`tEnabling RDP...`n"
+		Write-Host "`n[+]`tEnabling RDP...`n" -ForegroundColor Green
 		Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 
 		# Edit firewall to accept connections only from the client device IP
-		Write-Host "`n[+]`tConfiguring firewall...`n"
+		Write-Host "`n[+]`tConfiguring firewall...`n" -ForegroundColor Green
 		Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" -Enabled True -RemoteAddress $clientIP
 		Set-NetFirewallRule -Name "RemoteDesktop-UserMode-In-TCP" -Enabled True -RemoteAddress $clientIP
 
@@ -125,7 +119,7 @@ function Set-RDP_Rules {
 		$script:rdp_UDP = Get-NetFirewallRule -Name "RemoteDesktop-UserMode-In-UDP" | Get-NetFirewallSecurityFilter
 
 		# Additional security settings
-		Write-Host "`n[+]`tSetting additional security settings...`n"
+		Write-Host "`n[+]`Configuring additional security settings...`n" -ForegroundColor Green
 		Set-NetFirewallSecurityFilter -Authentication Required -Encryption Required -InputObject $rdp_TCP
 		Set-NetFirewallSecurityFilter -Authentication Required -Encryption Required -InputObject $rdp_UDP
 
@@ -155,3 +149,10 @@ function Get-ClientIP {
 	$script:clientIP = $deviceInfo[0]
 	Write-Host "`n[+]`tAdding $deviceInfo!`n"
 }
+
+# "<Main>" process
+Install-Chocolatey
+Install-Tailscale
+Get-TailscaleCli
+Set-AllowLogin
+Set-RDP_Rules
