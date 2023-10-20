@@ -30,7 +30,7 @@ Windows RDP is a great tool to remotely access your Windows machines. However, i
 
 - Download the [script](https://github.com/pranavm7/RDPScale/blob/main/RDP_Scale.ps1) and run it as an administrator on your windows pc you want to connect **to**. The script will guide you through the setup process.
 
-> [!INFO]
+> [!NOTE]
 > Ensure to use the same login account on both the devices.  
 ---
 
